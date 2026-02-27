@@ -1,0 +1,497 @@
+<?php
+// ===== LOGOUT =====
+if(isset($_GET['logout'])){
+    session_start();
+    session_destroy();
+    header("location:index.php");
+    exit;
+}
+
+// ===== DB CONNECTION =====
+$con = mysqli_connect("localhostsql113.infinityfree.com","if0_40548515","exYfHbCHoVacr","if0_40548515_files");
+
+// ===== FILE UPLOAD =====
+if(isset($_POST["btn"])){
+    $tmp           = $_FILES['fname']['tmp_name'];
+    $uploaded_path = 'upload/' . basename($_FILES['fname']['name']);
+    move_uploaded_file($tmp, $uploaded_path);
+    $desc  = $_POST['desc'];
+    $short = $_POST['short'];
+    $msql  = "INSERT INTO ftable (No,File,Name,description) VALUES ('','$uploaded_path','$short','$desc')";
+    mysqli_query($con, $msql);
+    header("location:Admin.php");
+    exit;
+}
+
+// ===== DELETE =====
+if(isset($_GET['no'])){
+    $Dno = intval($_GET['no']);
+    $pg  = isset($_GET['page']) ? intval($_GET['page']) : 1;
+    mysqli_query($con, "DELETE FROM ftable WHERE No = '$Dno'");
+    header("location:Admin.php?page=$pg");
+    exit;
+}
+
+// ===== SEARCH & PAGINATION =====
+$search      = isset($_GET['search']) ? trim($_GET['search']) : '';
+$perPage     = 10;
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset      = ($currentPage - 1) * $perPage;
+
+$whereClause = '';
+$searchParam = '';
+if($search !== ''){
+    $safe        = mysqli_real_escape_string($con, $search);
+    $whereClause = "WHERE Name LIKE '%$safe%' OR description LIKE '%$safe%'";
+}
+
+$totalFiles = mysqli_fetch_array(mysqli_query($con,"SELECT COUNT(*) as c FROM ftable $whereClause"))['c'];
+$totalPages = ceil($totalFiles / $perPage);
+
+// Total file count (always all files)
+$allFilesCount = mysqli_fetch_array(mysqli_query($con,"SELECT COUNT(*) as c FROM ftable"))['c'];
+?>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== CSS VARIABLES ===== */
+:root{
+    --bg:#0a0a0f;
+    --bg2:#111118;
+    --surface:rgba(255,255,255,0.04);
+    --border:rgba(0,234,255,0.15);
+    --accent:#00eaff;
+    --accent2:#0066ff;
+    --text:#e9ffff;
+    --text-muted:#aaf0ff66;
+    --text-sub:#aaf0ffaa;
+    --row-hover:rgba(0,234,255,0.06);
+    --del:#ff4455;
+    --del-hover:rgba(255,68,85,0.12);
+    --shadow:0 0 60px rgba(0,234,255,0.07);
+    --input-bg:rgba(0,0,0,0.3);
+    --th-bg:rgba(0,255,255,0.07);
+    --glow:0 0 20px rgba(0,234,255,0.3);
+    --badge-bg:rgba(0,234,255,0.1);
+}
+[data-theme="light"]{
+    --bg:#f0f4f8;
+    --bg2:#ffffff;
+    --surface:rgba(255,255,255,0.85);
+    --border:rgba(0,100,200,0.18);
+    --accent:#0066cc;
+    --accent2:#004499;
+    --text:#0d1b2a;
+    --text-muted:#556677aa;
+    --text-sub:#334455bb;
+    --row-hover:rgba(0,100,200,0.05);
+    --del:#cc2233;
+    --del-hover:rgba(204,34,51,0.08);
+    --shadow:0 4px 40px rgba(0,80,180,0.1);
+    --input-bg:rgba(255,255,255,0.9);
+    --th-bg:rgba(0,100,200,0.07);
+    --glow:0 0 20px rgba(0,100,200,0.2);
+    --badge-bg:rgba(0,100,200,0.1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;transition:background .25s,color .2s,border-color .2s;}
+
+body{
+    background:var(--bg);
+    font-family:'DM Sans',sans-serif;
+    color:var(--text);
+    min-height:100vh;
+}
+
+[data-theme="dark"] body::before{
+    content:'';position:fixed;inset:0;
+    background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(0,234,255,0.08),transparent),
+               radial-gradient(ellipse 30% 30% at 90% 90%,rgba(0,80,255,0.05),transparent);
+    pointer-events:none;z-index:0;
+}
+
+/* ===== TOP NAV ===== */
+.topnav{
+    background:var(--bg2);
+    border-bottom:1px solid var(--border);
+    padding:0 24px;
+    display:flex;align-items:center;justify-content:space-between;
+    height:64px;
+    position:sticky;top:0;z-index:100;
+    backdrop-filter:blur(12px);
+}
+.nav-brand{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:20px;
+    color:var(--accent);letter-spacing:2px;
+    display:flex;align-items:center;gap:10px;
+}
+.nav-brand .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 8px var(--accent);
+    animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav-right{display:flex;align-items:center;gap:12px;}
+
+/* Stat badge */
+.stat-badge{
+    background:var(--badge-bg);
+    border:1px solid var(--border);
+    border-radius:10px;padding:6px 14px;
+    font-size:13px;font-weight:500;color:var(--accent);
+    display:flex;align-items:center;gap:6px;
+}
+.stat-badge span{color:var(--text-sub);font-size:12px;}
+
+/* Theme toggle */
+.theme-toggle{
+    width:42px;height:42px;border-radius:12px;
+    background:var(--surface);border:1px solid var(--border);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+}
+.theme-toggle:hover{background:var(--row-hover);}
+
+/* Logout */
+.logout-btn{
+    padding:8px 18px;border-radius:11px;
+    border:1px solid var(--del);
+    color:var(--del);background:transparent;
+    font-size:13px;font-weight:600;
+    font-family:'Syne',sans-serif;letter-spacing:.5px;
+    cursor:pointer;text-decoration:none;
+    display:flex;align-items:center;gap:6px;
+    transition:.2s;
+}
+.logout-btn:hover{background:var(--del-hover);}
+
+/* ===== MAIN WRAPPER ===== */
+.main{max-width:1100px;margin:0 auto;padding:32px 20px;position:relative;z-index:1;}
+
+/* ===== UPLOAD CARD ===== */
+.card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:20px;padding:28px 32px;
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(12px);
+    margin-bottom:24px;
+}
+.card-title{
+    font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+    color:var(--accent);letter-spacing:2px;text-transform:uppercase;
+    margin-bottom:18px;display:flex;align-items:center;gap:8px;
+}
+.upload-grid{
+    display:flex;flex-direction:column;gap:14px;
+}
+.upload-btn{ align-self:flex-start; padding:12px 32px; }
+
+.field-wrap label{
+    display:block;color:var(--text-sub);
+    font-size:11px;font-weight:500;letter-spacing:1px;
+    text-transform:uppercase;margin-bottom:6px;
+}
+.inp{
+    width:100%;padding:12px 16px;
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    border-radius:12px;color:var(--text);
+    font-size:14px;font-family:'DM Sans',sans-serif;
+    outline:none;
+}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,234,255,0.08);}
+.inp::placeholder{color:var(--text-muted);}
+input[type=file].inp{cursor:pointer;}
+
+.upload-btn{
+    padding:12px 24px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border:none;border-radius:12px;color:white;
+    font-size:14px;font-weight:700;font-family:'Syne',sans-serif;
+    letter-spacing:.5px;cursor:pointer;transition:.25s;
+    white-space:nowrap;height:45px;
+}
+.upload-btn:hover{transform:scale(1.04);box-shadow:var(--glow);}
+
+/* ===== SEARCH & FILTERS ===== */
+.toolbar{
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:16px;flex-wrap:wrap;
+}
+.search-wrap{
+    flex:1;min-width:200px;position:relative;
+}
+.search-wrap input{
+    width:100%;padding:11px 16px 11px 40px;
+    background:var(--input-bg);border:1px solid var(--border);
+    border-radius:12px;color:var(--text);font-size:14px;
+    font-family:'DM Sans',sans-serif;outline:none;
+}
+.search-wrap input:focus{border-color:var(--accent);}
+.search-wrap input::placeholder{color:var(--text-muted);}
+.search-icon{
+    position:absolute;left:13px;top:50%;transform:translateY(-50%);
+    color:var(--text-muted);font-size:16px;pointer-events:none;
+}
+.search-btn{
+    padding:11px 20px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;color:var(--accent);
+    font-size:13px;font-weight:600;font-family:'Syne',sans-serif;
+    cursor:pointer;text-decoration:none;
+    display:flex;align-items:center;gap:6px;
+    transition:.2s;
+}
+.search-btn:hover{background:var(--row-hover);}
+
+/* result info */
+.result-info{
+    font-size:13px;color:var(--text-sub);
+    margin-bottom:10px;
+}
+.result-info strong{color:var(--accent);}
+
+/* ===== TABLE ===== */
+.table-wrap{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;overflow:hidden;
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(12px);
+}
+table{width:100%;border-collapse:collapse;}
+th{
+    background:var(--th-bg);color:var(--accent);
+    padding:15px 16px;font-family:'Syne',sans-serif;
+    font-size:12px;font-weight:700;letter-spacing:1.5px;
+    text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+    text-align:left;
+}
+td{
+    padding:14px 16px;color:var(--text);
+    border-bottom:1px solid var(--border);
+    font-size:14px;vertical-align:middle;
+}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--row-hover);transition:.15s;}
+
+.no-num{color:var(--text-muted);font-size:13px;}
+.file-name{font-weight:500;}
+.file-desc{color:var(--text-sub);font-size:13px;}
+
+a.del-btn{
+    text-decoration:none;color:var(--del);font-weight:600;
+    padding:6px 12px;border-radius:8px;font-size:13px;
+    display:inline-flex;align-items:center;gap:4px;
+    border:1px solid transparent;transition:.2s;
+}
+a.del-btn:hover{background:var(--del-hover);border-color:var(--del);}
+
+.empty-state{
+    text-align:center;padding:48px 20px;
+    color:var(--text-muted);font-size:15px;
+}
+.empty-state .icon{font-size:40px;margin-bottom:12px;display:block;}
+
+/* ===== PAGINATION ===== */
+.page-info{
+    text-align:center;color:var(--text-muted);
+    font-size:13px;padding:14px 0 8px;
+}
+.pagination{
+    display:flex;justify-content:center;align-items:center;
+    gap:6px;padding:10px 0 32px;flex-wrap:wrap;
+}
+.page-btn{
+    padding:8px 15px;border-radius:10px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-sub);font-size:13px;font-weight:600;
+    cursor:pointer;text-decoration:none;transition:.2s;
+    font-family:'Syne',sans-serif;
+}
+.page-btn:hover{background:var(--row-hover);color:var(--accent);}
+.page-btn.active{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:white;border-color:transparent;
+    box-shadow:var(--glow);
+}
+.page-btn.disabled{opacity:.3;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<!-- ===== TOP NAV ===== -->
+<nav class="topnav">
+    <div class="nav-brand">
+        <div class="dot"></div>
+        ADMIN
+    </div>
+    <div class="nav-right">
+        <div class="stat-badge">
+            📁 <?= $allFilesCount ?> <span>files total</span>
+        </div>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+        <a href="?logout=1" class="logout-btn" onclick="return confirm('Logout karein?')">⏻ Logout</a>
+    </div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+
+    <!-- UPLOAD CARD -->
+    <div class="card">
+        <div class="card-title">⬆ Upload File</div>
+        <form action="Admin.php" method="post" enctype="multipart/form-data">
+            <div class="upload-grid">
+                <div class="field-wrap">
+                    <label>Choose File</label>
+                    <input type="file" class="inp" name="fname" required>
+                </div>
+                <div class="field-wrap">
+                    <label>Short Name</label>
+                    <input type="text" class="inp" name="short" maxlength="15" placeholder="Max 15 chars" required>
+                </div>
+                <div class="field-wrap">
+                    <label>Description</label>
+                    <input type="text" class="inp" name="desc" maxlength="50" placeholder="Max 50 chars" required>
+                </div>
+                <button type="submit" name="btn" class="upload-btn">Upload →</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- SEARCH & TABLE -->
+    <div class="card">
+        <div class="card-title">📂 Files</div>
+
+        <!-- Search bar -->
+        <form method="get" action="Admin.php">
+            <div class="toolbar">
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search by name or description…" id="searchInput">
+                </div>
+                <button type="submit" class="search-btn">Search</button>
+                <?php if($search): ?>
+                    <a href="Admin.php" class="search-btn">✕ Clear</a>
+                <?php endif; ?>
+            </div>
+        </form>
+
+        <?php if($search): ?>
+        <div class="result-info">
+            Showing <strong><?= $totalFiles ?></strong> result<?= $totalFiles != 1 ? 's' : '' ?> for "<strong><?= htmlspecialchars($search) ?></strong>"
+        </div>
+        <?php endif; ?>
+
+        <!-- TABLE -->
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>File Name</th>
+                        <th>Description</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php
+                $msql  = "SELECT * FROM ftable $whereClause ORDER BY No ASC LIMIT $perPage OFFSET $offset";
+                $mRs   = mysqli_query($con, $msql);
+                $serial = $offset + 1;
+                $count  = 0;
+
+                while($mRow = mysqli_fetch_array($mRs)){
+                    $count++;
+                    $no   = $mRow['No'];
+                    $name = htmlspecialchars($mRow['Name']);
+                    $desc = htmlspecialchars($mRow['description']);
+                    $searchQ = $search ? "&search=".urlencode($search) : '';
+
+                    echo "<tr>
+                        <td class='no-num'>$serial</td>
+                        <td class='file-name'>$name</td>
+                        <td class='file-desc'>$desc</td>
+                        <td>
+                            <a href='?no=$no&page=$currentPage$searchQ' class='del-btn'
+                               onclick=\"return confirm('Delete &quot;$name&quot;? This cannot be undone.')\">🗑 Delete</a>
+                        </td>
+                    </tr>";
+                    $serial++;
+                }
+
+                if($count === 0){
+                    echo "<tr><td colspan='4' class='empty-state'>
+                        <span class='icon'>📭</span>
+                        " . ($search ? "No files match your search." : "No files uploaded yet.") . "
+                    </td></tr>";
+                }
+                ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINATION -->
+        <?php if($totalPages > 1): ?>
+        <div class="page-info">
+            Showing <?= $offset+1 ?>–<?= min($offset+$perPage, $totalFiles) ?> of <?= $totalFiles ?> files &nbsp;|&nbsp; Page <?= $currentPage ?> of <?= $totalPages ?>
+        </div>
+        <div class="pagination">
+            <a href="?page=<?= $currentPage-1 ?><?= $search ? '&search='.urlencode($search) : '' ?>"
+               class="page-btn <?= $currentPage <= 1 ? 'disabled' : '' ?>">← Prev</a>
+
+            <?php
+            $start = max(1, $currentPage - 2);
+            $end   = min($totalPages, $currentPage + 2);
+            if($start > 1){ echo "<a href='?page=1".($search?"&search=".urlencode($search):"")."' class='page-btn'>1</a>"; if($start > 2) echo "<span class='page-btn disabled'>…</span>"; }
+            for($i = $start; $i <= $end; $i++){
+                $act = ($i === $currentPage) ? 'active' : '';
+                echo "<a href='?page=$i".($search?"&search=".urlencode($search):"")."' class='page-btn $act'>$i</a>";
+            }
+            if($end < $totalPages){ if($end < $totalPages-1) echo "<span class='page-btn disabled'>…</span>"; echo "<a href='?page=$totalPages".($search?"&search=".urlencode($search):"")."' class='page-btn'>$totalPages</a>"; }
+            ?>
+
+            <a href="?page=<?= $currentPage+1 ?><?= $search ? '&search='.urlencode($search) : '' ?>"
+               class="page-btn <?= $currentPage >= $totalPages ? 'disabled' : '' ?>">Next →</a>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div>
+
+<script>
+// ===== THEME TOGGLE =====
+const html = document.documentElement;
+const btn  = document.getElementById('themeToggle');
+
+// Load saved theme
+const saved = localStorage.getItem('adminTheme') || 'dark';
+html.setAttribute('data-theme', saved);
+btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+
+btn.addEventListener('click', () => {
+    const current = html.getAttribute('data-theme');
+    const next    = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    btn.textContent = next === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('adminTheme', next);
+});
+
+// ===== LIVE SEARCH (on Enter key, form submits naturally) =====
+// Optional: auto-submit on clear
+document.getElementById('searchInput').addEventListener('input', function(){
+    if(this.value === '') this.form.submit();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<?php
+// ===== PHP BILKUL PEHLE =====
+$con = mysqli_connect("localhostsql113.infinityfree.com","if0_40548515","exYfHbCHoVacr","if0_40548515_files");
+$successMsg = "";
+$errorMsg   = "";
+
+if(isset($_POST['btn_register']))
+{
+    $Name     = trim($_POST['txtName']);
+    $Email    = trim($_POST['txtEmail']);
+    $Password = $_POST['txtPass'];
+    $Confirm  = $_POST['txtConfirm'];
+    $Mobile   = trim($_POST['txtMobile']);
+
+    // Basic validation
+    if(empty($Name) || empty($Email) || empty($Password) || empty($Mobile)){
+        $errorMsg = "All fields are required!";
+    }
+    elseif(!filter_var($Email, FILTER_VALIDATE_EMAIL)){
+        $errorMsg = "Invalid email address!";
+    }
+    elseif($Password !== $Confirm){
+        $errorMsg = "Passwords do not match!";
+    }
+    elseif(strlen($Password) < 6){
+        $errorMsg = "Password must be at least 6 characters!";
+    }
+    else
+    {
+        // Check duplicate email
+        $chk = mysqli_query($con, "SELECT * FROM userinfo WHERE Email='$Email'");
+        if(mysqli_num_rows($chk) > 0){
+            $errorMsg = "Email already registered!";
+        }
+        else
+        {
+            // Roll = 0 (normal user) by default
+            $Name     = mysqli_real_escape_string($con, $Name);
+            $Email    = mysqli_real_escape_string($con, $Email);
+            $Password = mysqli_real_escape_string($con, $Password);
+            $Mobile   = mysqli_real_escape_string($con, $Mobile);
+
+            $msql = "INSERT INTO userinfo (Name, Email, password, Mobile, Roll)
+                     VALUES ('$Name','$Email','$Password','$Mobile','0')";
+
+            if(mysqli_query($con, $msql)){
+                $successMsg = "Registration successful! You can now login.";
+            } else {
+                $errorMsg = "Error: " . mysqli_error($con);
+            }
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <style>
+        *{ box-sizing:border-box; margin:0; padding:0; }
+        body{
+            min-height:100vh;
+            display:flex; justify-content:center; align-items:center;
+            font-family:"Poppins", sans-serif;
+            background:#0f0f0f; padding:20px;
+        }
+
+        /* BOX */
+        .register-box{
+            width:100%; max-width:380px;
+            padding:32px;
+            background:rgba(255,255,255,0.05);
+            border-radius:22px;
+            backdrop-filter:blur(14px);
+            box-shadow:0 0 30px rgba(0,255,255,0.12);
+            border:1px solid rgba(0,255,255,0.18);
+            color:#e3ffff;
+            animation:fadeIn 0.8s ease;
+        }
+        @keyframes fadeIn{
+            from{ opacity:0; transform:scale(0.95); }
+            to  { opacity:1; transform:scale(1); }
+        }
+
+        /* Title */
+        h2{
+            text-align:center;
+            margin-bottom:22px;
+            font-size:28px; font-weight:700;
+            color:#00eaff;
+            text-shadow:0 0 10px #00eaff66;
+        }
+
+        /* Input group */
+        .input-group{
+            margin-bottom:14px;
+            position:relative;
+        }
+        .input-group label{
+            font-size:13px; color:#aaf0ff;
+            margin-bottom:5px; display:block;
+        }
+        .input-group input{
+            width:100%; padding:11px 14px;
+            padding-right:42px;
+            border-radius:12px; font-size:15px;
+            outline:none;
+            background:rgba(0,0,0,0.4);
+            border:1px solid #00eaff55;
+            color:#d8ffff;
+            transition:border-color 0.2s;
+        }
+        .input-group input:focus{ border-color:#00eaff; }
+        .input-group input::placeholder{ color:#b9faff88; }
+
+        /* Eye toggle */
+        .eye{
+            position:absolute; right:13px; bottom:11px;
+            cursor:pointer; font-size:17px;
+            color:#00eaff88; user-select:none; transition:0.2s;
+        }
+        .eye:hover{ color:#00eaff; }
+
+        /* Password strength */
+        .strength-bar{
+            height:5px; border-radius:8px;
+            margin-top:6px; background:#222;
+            overflow:hidden;
+        }
+        .strength-fill{
+            height:100%; width:0%;
+            border-radius:8px; transition:0.3s;
+        }
+        .strength-text{
+            font-size:12px; margin-top:3px; color:#aaa;
+        }
+
+        /* Buttons */
+        .btn-box{
+            display:flex; gap:10px; margin-top:6px;
+        }
+        .btn{
+            flex:1; padding:12px; border:none;
+            border-radius:14px; font-size:15px;
+            cursor:pointer; color:white; font-weight:600;
+            background:linear-gradient(135deg,#00eaff,#0088ff);
+            box-shadow:0 4px 12px rgba(0,255,255,0.2);
+            transition:0.3s ease;
+        }
+        .btn:hover{ transform:scale(1.04); box-shadow:0 6px 18px rgba(0,255,255,0.3); }
+        .btn.reset{ background:linear-gradient(135deg,#ff4444,#d30000); }
+        .btn.reset:hover{ box-shadow:0 6px 18px rgba(255,0,0,0.3); }
+
+        /* Messages */
+        .msg{
+            padding:10px 14px; border-radius:10px;
+            font-size:13px; text-align:center; margin-bottom:14px;
+        }
+        .msg.success{ background:rgba(0,255,136,0.1); color:#00ff88; border:1px solid #00ff8833; }
+        .msg.error  { background:rgba(255,68,68,0.12); color:#ff8888; border:1px solid #ff444433; }
+
+        /* Login link */
+        .login-link{
+            text-align:center; margin-top:16px;
+            font-size:14px; color:#aaf0ff;
+        }
+        .login-link a{
+            color:#00eaff; font-weight:600; text-decoration:none;
+        }
+        .login-link a:hover{ color:#7af2ff; }
+
+        @media(max-width:400px){ .register-box{ padding:24px 18px; } }
+    </style>
+</head>
+<body>
+
+<div class="register-box">
+    <h2>📝 Register</h2>
+
+    <?php if($successMsg): ?>
+        <div class="msg success">✅ <?= htmlspecialchars($successMsg) ?></div>
+    <?php endif; ?>
+    <?php if($errorMsg): ?>
+        <div class="msg error">❌ <?= htmlspecialchars($errorMsg) ?></div>
+    <?php endif; ?>
+
+    <form method="POST" id="regForm">
+
+        <!-- Name -->
+        <div class="input-group">
+            <label>Full Name</label>
+            <input type="text" name="txtName" placeholder="Enter your name"
+                   maxlength="20"
+                   value="<?= isset($_POST['txtName']) ? htmlspecialchars($_POST['txtName']) : '' ?>"
+                   required>
+        </div>
+
+        <!-- Email -->
+        <div class="input-group">
+            <label>Email Address</label>
+            <input type="email" name="txtEmail" placeholder="Enter your email"
+                   maxlength="20"
+                   value="<?= isset($_POST['txtEmail']) ? htmlspecialchars($_POST['txtEmail']) : '' ?>"
+                   required>
+        </div>
+
+        <!-- Mobile -->
+        <div class="input-group">
+            <label>Mobile Number</label>
+            <input type="number" name="txtMobile" placeholder="Enter mobile number"
+                   value="<?= isset($_POST['txtMobile']) ? htmlspecialchars($_POST['txtMobile']) : '' ?>"
+                   required>
+        </div>
+
+        <!-- Password -->
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" name="txtPass" id="passInput"
+                   placeholder="Min 6 characters"
+                   maxlength="16"
+                   oninput="checkStrength(this.value)" required>
+            <span class="eye" onclick="togglePass('passInput', this)">👁️</span>
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            <div class="strength-text" id="strengthText"></div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="input-group">
+            <label>Confirm Password</label>
+            <input type="password" name="txtConfirm" id="confirmInput"
+                   placeholder="Re-enter password"
+                   maxlength="16" required>
+            <span class="eye" onclick="togglePass('confirmInput', this)">👁️</span>
+        </div>
+
+        <!-- Buttons -->
+        <div class="btn-box">
+            <button type="submit" name="btn_register" class="btn">Register</button>
+            <button type="button" class="btn reset" onclick="resetForm()">Reset</button>
+        </div>
+
+    </form>
+
+    <div class="login-link">
+        Already have an account? <a href="index.php">Login here</a>
+    </div>
+</div>
+
+<script>
+// Password show/hide
+function togglePass(id, eye){
+    const f = document.getElementById(id);
+    if(f.type === 'password'){ f.type = 'text';     eye.textContent = '🙈'; }
+    else                     { f.type = 'password'; eye.textContent = '👁️'; }
+}
+
+// Password strength
+function checkStrength(val){
+    const fill = document.getElementById('strengthFill');
+    const text = document.getElementById('strengthText');
+    let score = 0;
+    if(val.length >= 6)  score++;
+    if(val.length >= 10) score++;
+    if(/[A-Z]/.test(val)) score++;
+    if(/[0-9]/.test(val)) score++;
+    if(/[^A-Za-z0-9]/.test(val)) score++;
+
+    const levels = [
+        { color:'#ff4444', label:'Very Weak',  w:'20%' },
+        { color:'#ff8800', label:'Weak',        w:'40%' },
+        { color:'#ffcc00', label:'Fair',        w:'60%' },
+        { color:'#88dd00', label:'Strong',      w:'80%' },
+        { color:'#00ff88', label:'Very Strong', w:'100%'},
+    ];
+    const lvl = val.length ? levels[Math.min(score-1, 4)] : null;
+    fill.style.width      = lvl ? lvl.w     : '0%';
+    fill.style.background = lvl ? lvl.color : '';
+    text.style.color      = lvl ? lvl.color : '';
+    text.textContent      = lvl ? lvl.label : '';
+}
+
+// Reset form
+function resetForm(){
+    document.getElementById('regForm').reset();
+    document.getElementById('strengthFill').style.width = '0%';
+    document.getElementById('strengthText').textContent  = '';
+}
+</script>
+</body>
+</html>

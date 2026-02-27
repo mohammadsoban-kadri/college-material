@@ -1,0 +1,364 @@
+<?php
+// BILKUL PEHLE - session start karo
+session_start();
+if(!isset($_SESSION['sname'])){ header("location:index.php"); exit; }
+$Name = $_SESSION['sname'];
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documents</title>
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+    font-family:"Poppins", sans-serif;
+    background:#0f0f0f;
+    color:#e9ffff;
+    transition:background 0.3s, color 0.3s;
+}
+
+/* ===== LIGHT MODE ===== */
+body.light{ background:#f0f4f8; color:#1a2a3a; }
+body.light nav{ background:#ffffff; border-bottom:1px solid #00eaff33; }
+body.light .nav-logo{ color:#0088ff; }
+body.light #searchInput{ background:rgba(0,0,0,0.06); color:#1a2a3a; border-color:#0088ff44; }
+body.light #searchInput::placeholder{ color:#66aacc; }
+body.light .sort-select{ background:#fff; color:#1a2a3a; border-color:#0088ff44; }
+body.light .file-count{ color:#0077cc; background:rgba(0,136,255,0.08); border-color:#0088ff22; }
+body.light .box{ background:rgba(255,255,255,0.9); border-color:#0088ff22;
+                  box-shadow:0 8px 20px rgba(0,136,255,0.07); color:#1a2a3a; }
+body.light .file-title{ color:#0077cc; }
+body.light .file-title a{ color:#0077cc; }
+body.light .file-title a:hover{ color:#0055aa; }
+body.light p{ color:#334; }
+body.light h1{ color:#0077cc; text-shadow:none; border-bottom-color:#0088ff22; }
+body.light .theme-btn{ color:#0077cc; border-color:#0088ff44; }
+body.light .toast{ background:#1a2a3a; }
+body.light .btn-copy{ color:#336; border-color:#33333322; }
+
+/* ===== NAV ===== */
+nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 24px;
+    background:#141414; border-bottom:1px solid #00eaff22;
+    position:sticky; top:0; z-index:100;
+    flex-wrap:wrap; gap:10px;
+}
+.nav-logo{ color:#00eaff; font-size:20px; font-weight:700; letter-spacing:1px; }
+.nav-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.nav-user{ color:#aaf0ff; font-size:14px; }
+
+/* Theme Toggle */
+.theme-btn{
+    padding:7px 14px; border:1px solid #00eaff44;
+    border-radius:10px; background:transparent;
+    color:#00eaff; font-size:13px; font-weight:600;
+    cursor:pointer; transition:0.2s;
+}
+.theme-btn:hover{ background:#00eaff11; }
+
+/* Logout */
+.logout-btn{
+    padding:7px 16px; border:none; border-radius:10px;
+    background:linear-gradient(135deg,#ff4444,#d30000);
+    color:white; font-size:13px; font-weight:600;
+    cursor:pointer; transition:0.25s; text-decoration:none;
+}
+.logout-btn:hover{ transform:scale(1.05); }
+
+/* ===== SEARCH ===== */
+.search-wrap{
+    padding:20px 24px 0;
+    display:flex; justify-content:center;
+}
+#searchInput{
+    width:100%; max-width:540px;
+    padding:12px 18px; border-radius:14px;
+    border:1px solid #00eaff55; background:rgba(0,0,0,0.3);
+    color:#e3ffff; font-size:15px; outline:none; transition:0.3s;
+}
+#searchInput:focus{ border-color:#00eaff; box-shadow:0 0 12px #00eaff33; }
+#searchInput::placeholder{ color:#b4fcff88; }
+
+/* ===== SORT + COUNT ===== */
+.toolbar{
+    display:flex; align-items:center; justify-content:center;
+    gap:12px; padding:14px 24px 0; flex-wrap:wrap;
+}
+.sort-select{
+    padding:8px 14px; border-radius:10px;
+    border:1px solid #00eaff44; background:rgba(0,0,0,0.3);
+    color:#e3ffff; font-size:14px; outline:none; cursor:pointer;
+}
+.sort-select:hover{ border-color:#00eaff; }
+.file-count{
+    padding:6px 16px; border-radius:10px;
+    background:rgba(0,255,255,0.07); border:1px solid #00eaff22;
+    color:#00eaff; font-size:13px; font-weight:600;
+}
+
+/* ===== HEADING ===== */
+h1{
+    text-align:center;
+    color:#00eaff;
+    margin-top:25px;
+    font-size:32px;
+    letter-spacing:1.3px;
+    text-shadow:0px 0px 10px #00eaff55;
+    padding-bottom:10px;
+    border-bottom:2px solid #00eaff33;
+    width:fit-content;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+/* ===== MAIN BOX ===== */
+#main-box{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:22px;
+    padding:25px;
+}
+
+/* ===== FILE CARD ===== */
+.box{
+    width:330px;
+    padding:22px;
+    background:rgba(255,255,255,0.05);
+    border-radius:16px;
+    box-shadow:0 8px 25px rgba(0,255,255,0.08);
+    border:1px solid rgba(0,255,255,0.18);
+    backdrop-filter:blur(14px);
+    color:#e9ffff;
+    transition:0.25s ease;
+}
+.box:hover{
+    transform:translateY(-8px);
+    box-shadow:0 15px 35px rgba(0,255,255,0.12);
+}
+
+/* File Title */
+.file-title{
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:10px;
+    color:#00eaff;
+}
+
+/* Links */
+a{
+    color:#00eaff;
+    text-decoration:none;
+    font-weight:600;
+}
+a:hover{ color:#7af2ff; }
+
+/* Description */
+p{
+    margin-top:8px;
+    opacity:0.9;
+    line-height:20px;
+    font-size:14px;
+}
+
+/* Buttons Row */
+.btn-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+
+/* Download Button */
+#Download{
+    height:38px;
+    width:130px;
+    border-radius:14px;
+    border:none;
+    outline:none;
+    font-size:15px;
+    font-weight:600;
+    color:white;
+    background:linear-gradient(135deg,#00eaff,#0088ff);
+    cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,255,255,0.25);
+    transition:0.25s ease;
+}
+#Download:hover{
+    transform:scale(1.05);
+    box-shadow:0 6px 18px rgba(0,255,255,0.35);
+}
+
+/* Copy Link Button */
+.btn-copy{
+    height:38px; padding:0 14px;
+    border-radius:12px; border:1px solid #ffffff22;
+    background:transparent; color:#aaf0ff;
+    font-size:13px; font-weight:600;
+    cursor:pointer; transition:0.2s;
+}
+.btn-copy:hover{ background:rgba(255,255,255,0.08); color:#fff; }
+
+/* No results */
+#noResults{
+    display:none; width:100%; text-align:center;
+    color:#aaf0ff66; font-size:16px; padding:40px 0;
+}
+
+/* Toast */
+.toast{
+    position:fixed; bottom:28px; left:50%;
+    transform:translateX(-50%) translateY(80px);
+    background:#1a1a2e; color:#00eaff;
+    padding:11px 24px; border-radius:12px;
+    font-size:14px; font-weight:600;
+    border:1px solid #00eaff33; z-index:9999;
+    transition:0.35s ease; opacity:0; pointer-events:none;
+}
+.toast.show{ transform:translateX(-50%) translateY(0); opacity:1; }
+
+/* Responsive */
+@media (max-width:600px){
+    .box{ width:90%; }
+    nav{ padding:10px 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <span class="nav-logo">📂 FileVault</span>
+    <div class="nav-right">
+        <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ Light</button>
+        <span class="nav-user">👋 <?= htmlspecialchars($Name) ?></span>
+        <a href="index.php" class="logout-btn">🚪 Logout</a>
+    </div>
+</nav>
+
+<!-- SEARCH -->
+<div class="search-wrap">
+    <input type="text" id="searchInput"
+           placeholder="🔍 Search files by name or description..."
+           onkeyup="searchAndSort()">
+</div>
+
+<!-- SORT + COUNT -->
+<div class="toolbar">
+    <select class="sort-select" id="sortSelect" onchange="searchAndSort()">
+        <option value="default">📋 Default Order</option>
+        <option value="az">🔤 Name A → Z</option>
+        <option value="za">🔤 Name Z → A</option>
+    </select>
+    <span class="file-count" id="fileCount">📁 Loading...</span>
+</div>
+
+<!-- HEADING -->
+<h1>Welcome '<?= htmlspecialchars($Name) ?>'</h1>
+
+<!-- FILE CARDS -->
+<?php
+$con  = mysqli_connect("localhostsql113.infinityfree.com","if0_40548515","exYfHbCHoVacr","if0_40548515_files");
+$msql = "select * from ftable";
+$mRs  = mysqli_query($con,$msql);
+
+echo "<div id='main-box'>";
+
+while($mRow = mysqli_fetch_array($mRs))
+{
+    $filePath = htmlspecialchars($mRow['File']);
+    $fileName = htmlspecialchars($mRow['Name']);
+    $fileDesc = htmlspecialchars($mRow['description']);
+
+    echo "
+    <div class='box' data-name='$fileName' data-desc='$fileDesc'>
+        <div class='file-title'>File name =
+            <a href='$filePath'> '$fileName' </a>
+        </div>
+        <p>'$fileDesc'</p>
+        <div class='btn-row'>
+            <a href='$filePath' download>
+                <input type='submit' id='Download' value='Download'>
+            </a>
+            <button class='btn-copy' onclick=\"copyLink('$filePath')\" title='Copy file link'>🔗 Copy Link</button>
+        </div>
+    </div>
+    ";
+}
+
+echo "<div id='noResults'>😕 No files found matching your search.</div>";
+echo "</div>";
+?>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== THEME TOGGLE =====
+function toggleTheme(){
+    const isLight = document.body.classList.toggle('light');
+    document.getElementById('themeBtn').textContent = isLight ? '🌙 Dark' : '☀️ Light';
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+if(localStorage.getItem('theme') === 'light'){
+    document.body.classList.add('light');
+    document.getElementById('themeBtn').textContent = '🌙 Dark';
+}
+
+// ===== SEARCH + SORT =====
+function searchAndSort(){
+    const q     = document.getElementById('searchInput').value.toLowerCase();
+    const sort  = document.getElementById('sortSelect').value;
+    const box   = document.getElementById('main-box');
+    const boxes = Array.from(document.querySelectorAll('.box'));
+
+    let visible = boxes.filter(b => {
+        const name = b.dataset.name.toLowerCase();
+        const desc = b.dataset.desc.toLowerCase();
+        const show = !q || name.includes(q) || desc.includes(q);
+        b.style.display = show ? 'block' : 'none';
+        return show;
+    });
+
+    if(sort === 'az'){
+        visible.sort((a,b) => a.dataset.name.localeCompare(b.dataset.name));
+    } else if(sort === 'za'){
+        visible.sort((a,b) => b.dataset.name.localeCompare(a.dataset.name));
+    }
+
+    visible.forEach(el => box.appendChild(el));
+    document.getElementById('noResults').style.display = visible.length ? 'none' : 'block';
+    document.getElementById('fileCount').textContent =
+        q ? `🔍 ${visible.length} found` : `📁 ${boxes.length} Files`;
+}
+
+// Init count
+window.addEventListener('load', () => {
+    const total = document.querySelectorAll('.box').length;
+    document.getElementById('fileCount').textContent = `📁 ${total} Files`;
+});
+
+// ===== COPY LINK =====
+function copyLink(path){
+    const fullUrl = window.location.origin + '/' + path;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        showToast('🔗 Link copied to clipboard!');
+    }).catch(() => {
+        const tmp = document.createElement('input');
+        tmp.value = fullUrl;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+        showToast('🔗 Link copied!');
+    });
+}
+
+// ===== TOAST =====
+function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
